@@ -5,6 +5,7 @@
   "description": "Vinyls Backend MISO",
   "license": "MIT",
   "scripts": {
+    "postinstall": "patch-package",
     "prebuild": "rimraf dist",
     "build": "nest build",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
@@ -44,6 +45,8 @@
     "@types/sequelize": "^4.28.8",
     "@types/supertest": "^2.0.8",
     "jest": "^24.9.0",
+    "patch-package": "^8.0.1",
+    "postinstall-postinstall": "^2.1.0",
     "prettier": "^1.18.2",
     "supertest": "^4.0.2",
     "ts-jest": "^24.1.0",

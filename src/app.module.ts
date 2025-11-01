@@ -32,27 +32,66 @@ import { CollectorPerformerModule } from './collectorperformer/collectorperforme
 import { AlbumBandModule } from './albumband/albumband.module';
 import { AlbumMusicianModule } from './albummusician/albummusician.module';
 
+// Parse DATABASE_URL for Render.com compatibility
+function getDatabaseConfig() {
+  // Render.com provides DATABASE_URL in format: postgres://user:password@host:port/database
+  const databaseUrl = process.env.DATABASE_URL;
+  
+  if (databaseUrl) {
+    try {
+      // Handle postgres:// and postgresql:// URLs by replacing with http:// for URL parsing
+      const urlString = databaseUrl.replace(/^postgres(ql)?:\/\//, 'http://');
+      const url = new URL(urlString);
+      
+      return {
+        type: 'postgres',
+        host: url.hostname,
+        port: parseInt(url.port, 10) || 5432,
+        username: decodeURIComponent(url.username),
+        password: decodeURIComponent(url.password),
+        database: url.pathname.slice(1), // Remove leading '/'
+        ssl: {
+          rejectUnauthorized: false,
+        },
+      };
+    } catch (error) {
+      console.error('Error parsing DATABASE_URL:', error);
+      // Fall through to use individual env vars
+    }
+  }
+  
+  // Fallback to individual environment variables for local development
+  return {
+    type: 'postgres',
+    host: process.env.DB_HOST || 'localhost',
+    port: parseInt(process.env.DB_PORT || '5432', 10),
+    username: process.env.DB_USER || 'postgres',
+    password: process.env.DB_PASS || 'postgres',
+    database: process.env.DB_NAME || 'vinyls',
+    ssl: process.env.USE_SSL === 'true' ? {
+      rejectUnauthorized: false,
+    } : undefined,
+  };
+}
+
+const dbConfig = getDatabaseConfig();
+
 @Module({
   imports: [  
     TypeOrmModule.forRoot({
       type: 'postgres',
-      host: process.env.DB_HOST || 'localhost',
-      port: 5432,
-      username: process.env.DB_USER || 'postgres',
-      password: process.env.DB_PASS || 'postgres',
-      database: process.env.DB_NAME || 'vinyls',
+      host: dbConfig.host,
+      port: dbConfig.port,
+      username: dbConfig.username,
+      password: dbConfig.password,
+      database: dbConfig.database,
+      ssl: dbConfig.ssl,
       entities: [Album, CollectorAlbum, Band, Collector, Comment, Musician, Performer, PerformerPrize, Prize, Track,],
       dropSchema: false,
-      synchronize: true,
+      synchronize: process.env.NODE_ENV !== 'production',
       keepConnectionAlive: true,
       migrations: [__dirname + '/migration/**/*{.ts,.js}'],
-      migrationsRun: true,
-      extra: process.env.USE_SSL === 'true' ? {
-        ssl: {
-          rejectUnauthorized: false,
-          sslmode: 'require'
-        }
-      } : undefined
+      migrationsRun: process.env.NODE_ENV === 'production',
     }),
     RecordLabelModule,
     PrizeModule,
