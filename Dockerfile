@@ -19,14 +19,16 @@ FROM node:18-alpine
 
 WORKDIR /usr/src/app
 
+# Copy package files
 COPY package*.json ./
 
-RUN npm ci --only=production
+# Install only production dependencies (faster, smaller image)
+RUN npm install --omit=dev --ignore-scripts || npm install --production --ignore-scripts
 
+# Copy built application
 COPY --from=builder /usr/src/app/dist ./dist
-COPY --from=builder /usr/src/app/patches ./patches 2>/dev/null || true
 
-# Apply patches in production if they exist
-RUN npm run postinstall || true
+# Copy the patched @nestjs/typeorm package from builder stage
+COPY --from=builder /usr/src/app/node_modules/@nestjs/typeorm ./node_modules/@nestjs/typeorm
 
-CMD ["npm", "run", "start:prod"]
+CMD ["node", "dist/main"]
